@@ -77,11 +77,13 @@ jobs:
           # Different packaging for tagged vs untagged builds
           if ($env:GITHUB_REF -match '^refs/tags/') {
             $suffix = ""
+            $vsuffix = ""
           } else {
-            $suffix = "--version-suffix ci-$env:GITHUB_RUN_ID"
+            $suffix = "ci-$env:GITHUB_RUN_ID"
+            $vsuffix = "--version-suffix"
           }
           
-          dotnet pack src/Confluent.Kafka/Confluent.Kafka.csproj -c $env:CONFIGURATION $suffix --output artifacts
+          dotnet pack src/Confluent.Kafka/Confluent.Kafka.csproj --output artifacts -c $env:CONFIGURATION $vsuffix $suffix 
           # dotnet pack src/Confluent.SchemaRegistry/Confluent.SchemaRegistry.csproj -c $env:CONFIGURATION $suffix --output artifacts
           # dotnet pack src/Confluent.SchemaRegistry.Serdes.Avro/Confluent.SchemaRegistry.Serdes.Avro.csproj -c $env:CONFIGURATION $suffix --output artifacts
           # dotnet pack src/Confluent.SchemaRegistry.Serdes.Protobuf/Confluent.SchemaRegistry.Serdes.Protobuf.csproj -c $env:CONFIGURATION $suffix --output artifacts
