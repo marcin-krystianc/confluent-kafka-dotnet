@@ -21,8 +21,7 @@ jobs:
       - name: Build and test
         run: |
           dotnet restore
-          make build
-          make test
+          dotnet test -c $env:CONFIGURATION test/Confluent.Kafka.UnitTests/Confluent.Kafka.UnitTests.csproj
 
   osx-build:
     name: 'OSX x64'
@@ -38,8 +37,7 @@ jobs:
       - name: Build and test
         run: |
           dotnet restore
-          make build
-          make test
+          dotnet test -c $env:CONFIGURATION test/Confluent.Kafka.UnitTests/Confluent.Kafka.UnitTests.csproj
 
   windows-build:
     name: 'Windows x64'
