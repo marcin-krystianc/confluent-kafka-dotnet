@@ -1,0 +1,99 @@
+name: 'confluent-kafka-dotnet build pipeline'
+
+env:
+  CONFIGURATION: Release
+  DOTNET_CLI_TELEMETRY_OPTOUT: 'true'
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ '*' ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  linux-build:
+    name: 'Linux x64'
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '6.0.x'
+      - name: Build and test
+        run: |
+          dotnet restore
+          make build
+          make test
+
+  osx-build:
+    name: 'OSX x64'
+    runs-on: macos-13
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '6.0.x'
+      - name: Set ulimit
+        run: ulimit -n 1024
+      - name: Build and test
+        run: |
+          dotnet restore
+          make build
+          make test
+
+  windows-build:
+    name: 'Windows x64'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '6.0.403'
+      - name: Build and test
+        run: |
+          dotnet restore
+          dotnet test -c $env:CONFIGURATION --no-build test/Confluent.Kafka.UnitTests/Confluent.Kafka.UnitTests.csproj
+          dotnet test -c $env:CONFIGURATION --no-build test/Confluent.SchemaRegistry.UnitTests/Confluent.SchemaRegistry.UnitTests.csproj
+          dotnet test -c $env:CONFIGURATION --no-build test/Confluent.SchemaRegistry.Serdes.UnitTests/Confluent.SchemaRegistry.Serdes.UnitTests.csproj
+
+  windows-artifacts:
+    name: 'Windows Artifacts'
+    needs: windows-build
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '6.0.403'
+      - name: Install DocFX
+        run: dotnet tool update -g docfx
+      - name: Build and create packages
+        run: |
+          dotnet restore
+          dotnet build Confluent.Kafka.sln -c $env:CONFIGURATION
+          
+          # Different packaging for tagged vs untagged builds
+          if ($env:GITHUB_REF -match '^refs/tags/') {
+            $suffix = ""
+          } else {
+            $suffix = "--version-suffix ci-$env:GITHUB_RUN_ID"
+          }
+          
+          dotnet pack src/Confluent.Kafka/Confluent.Kafka.csproj -c $env:CONFIGURATION $suffix --output artifacts
+          dotnet pack src/Confluent.SchemaRegistry/Confluent.SchemaRegistry.csproj -c $env:CONFIGURATION $suffix --output artifacts
+          dotnet pack src/Confluent.SchemaRegistry.Serdes.Avro/Confluent.SchemaRegistry.Serdes.Avro.csproj -c $env:CONFIGURATION $suffix --output artifacts
+          dotnet pack src/Confluent.SchemaRegistry.Serdes.Protobuf/Confluent.SchemaRegistry.Serdes.Protobuf.csproj -c $env:CONFIGURATION $suffix --output artifacts
+          dotnet pack src/Confluent.SchemaRegistry.Serdes.Json/Confluent.SchemaRegistry.Serdes.Json.csproj -c $env:CONFIGURATION $suffix --output artifacts
+          
+          docfx doc/docfx.json
+          tar -czf artifacts/docs-$env:GITHUB_RUN_ID.zip doc/_site/*
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: build-artifacts
+          path: artifacts/
