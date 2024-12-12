@@ -86,9 +86,7 @@ jobs:
           dotnet pack src/Confluent.SchemaRegistry.Serdes.Avro/Confluent.SchemaRegistry.Serdes.Avro.csproj -c $env:CONFIGURATION $suffix --output artifacts
           dotnet pack src/Confluent.SchemaRegistry.Serdes.Protobuf/Confluent.SchemaRegistry.Serdes.Protobuf.csproj -c $env:CONFIGURATION $suffix --output artifacts
           dotnet pack src/Confluent.SchemaRegistry.Serdes.Json/Confluent.SchemaRegistry.Serdes.Json.csproj -c $env:CONFIGURATION $suffix --output artifacts
-          
-          docfx doc/docfx.json
-          tar -czf artifacts/docs-$env:GITHUB_RUN_ID.zip doc/_site/*
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
         with:
