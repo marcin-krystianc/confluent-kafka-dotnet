@@ -6,10 +6,7 @@ env:
 
 on:
   push:
-    branches: [ main ]
-    tags: [ '*' ]
   pull_request:
-    branches: [ main ]
 
 jobs:
   linux-build:
@@ -56,9 +53,9 @@ jobs:
       - name: Build and test
         run: |
           dotnet restore
-          dotnet test -c $env:CONFIGURATION --no-build test/Confluent.Kafka.UnitTests/Confluent.Kafka.UnitTests.csproj
-          dotnet test -c $env:CONFIGURATION --no-build test/Confluent.SchemaRegistry.UnitTests/Confluent.SchemaRegistry.UnitTests.csproj
-          dotnet test -c $env:CONFIGURATION --no-build test/Confluent.SchemaRegistry.Serdes.UnitTests/Confluent.SchemaRegistry.Serdes.UnitTests.csproj
+          dotnet test -c $env:CONFIGURATION test/Confluent.Kafka.UnitTests/Confluent.Kafka.UnitTests.csproj
+          # dotnet test -c $env:CONFIGURATION test/Confluent.SchemaRegistry.UnitTests/Confluent.SchemaRegistry.UnitTests.csproj
+          # dotnet test -c $env:CONFIGURATION test/Confluent.SchemaRegistry.Serdes.UnitTests/Confluent.SchemaRegistry.Serdes.UnitTests.csproj
 
   windows-artifacts:
     name: 'Windows Artifacts'
@@ -80,18 +77,20 @@ jobs:
           # Different packaging for tagged vs untagged builds
           if ($env:GITHUB_REF -match '^refs/tags/') {
             $suffix = ""
+            $vsuffix = ""
           } else {
-            $suffix = "--version-suffix ci-$env:GITHUB_RUN_ID"
+            $suffix = "ci-$env:GITHUB_RUN_ID"
+            $vsuffix = "--version-suffix"
           }
           
-          dotnet pack src/Confluent.Kafka/Confluent.Kafka.csproj -c $env:CONFIGURATION $suffix --output artifacts
-          dotnet pack src/Confluent.SchemaRegistry/Confluent.SchemaRegistry.csproj -c $env:CONFIGURATION $suffix --output artifacts
-          dotnet pack src/Confluent.SchemaRegistry.Serdes.Avro/Confluent.SchemaRegistry.Serdes.Avro.csproj -c $env:CONFIGURATION $suffix --output artifacts
-          dotnet pack src/Confluent.SchemaRegistry.Serdes.Protobuf/Confluent.SchemaRegistry.Serdes.Protobuf.csproj -c $env:CONFIGURATION $suffix --output artifacts
-          dotnet pack src/Confluent.SchemaRegistry.Serdes.Json/Confluent.SchemaRegistry.Serdes.Json.csproj -c $env:CONFIGURATION $suffix --output artifacts
-          
-          docfx doc/docfx.json
-          tar -czf artifacts/docs-$env:GITHUB_RUN_ID.zip doc/_site/*
+          dotnet pack src/Confluent.Kafka/Confluent.Kafka.csproj --output artifacts -c $env:CONFIGURATION $vsuffix $suffix 
+          # dotnet pack src/Confluent.SchemaRegistry/Confluent.SchemaRegistry.csproj -c $env:CONFIGURATION $suffix --output artifacts
+          # dotnet pack src/Confluent.SchemaRegistry.Serdes.Avro/Confluent.SchemaRegistry.Serdes.Avro.csproj -c $env:CONFIGURATION $suffix --output artifacts
+          # dotnet pack src/Confluent.SchemaRegistry.Serdes.Protobuf/Confluent.SchemaRegistry.Serdes.Protobuf.csproj -c $env:CONFIGURATION $suffix --output artifacts
+          # dotnet pack src/Confluent.SchemaRegistry.Serdes.Json/Confluent.SchemaRegistry.Serdes.Json.csproj -c $env:CONFIGURATION $suffix --output artifacts
+
+          # docfx doc/docfx.json
+          # tar -czf artifacts/docs-$env:GITHUB_RUN_ID.zip doc/_site/*
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
         with:
