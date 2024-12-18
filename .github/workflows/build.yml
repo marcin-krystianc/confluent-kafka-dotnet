@@ -54,7 +54,6 @@ jobs:
           dotnet test -c $env:CONFIGURATION test/Confluent.Kafka.UnitTests/Confluent.Kafka.UnitTests.csproj
 
   package:
-    name: 'Windows Artifacts'
     needs:  [windows-build, osx-build, linux-build]
     runs-on: windows-latest
     steps:
