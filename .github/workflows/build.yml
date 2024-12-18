@@ -77,7 +77,7 @@ jobs:
 
           # Different packaging for tagged vs untagged builds
           if ($env:GITHUB_REF -match '^refs/tags/') {
-            $suffix = "gr.$env:GITHUB_RUN_NUMBER"
+            $suffix = "gr"
             $vsuffix = "--version-suffix"
           } else {
             $suffix = "ci-$env:GITHUB_RUN_ID"
