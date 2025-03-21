@@ -34,6 +34,11 @@ namespace Confluent.Kafka
     /// </summary>
     internal class Consumer<TKey, TValue> : IConsumer<TKey, TValue>, IClient
     {
+        private static ConsumeResult<TKey, TValue> _result = new ConsumeResult<TKey, TValue>
+        {
+            IsPartitionEOF = false
+        };
+        
         internal class Config
         {
             internal IEnumerable<KeyValuePair<string, string>> config;
@@ -786,172 +791,7 @@ namespace Confluent.Kafka
 
             try
             {
-                var msg = Util.Marshal.PtrToStructure<rd_kafka_message>(msgPtr);
-                int? msgLeaderEpoch = null;
-                Offset msgOffset = msg.offset;
-
-                if (msg.rkt != IntPtr.Zero && (msgOffset != Offset.Unset))
-                {
-                    msgLeaderEpoch = Librdkafka.message_leader_epoch(msgPtr);
-                }
-
-                string topic = null;
-                if (this.enableTopicNameMarshaling)
-                {
-                    if (msg.rkt != IntPtr.Zero)
-                    {
-                        topic = Util.Marshal.PtrToStringUTF8(Librdkafka.topic_name(msg.rkt));
-                    }
-                }
-
-                if (msg.err == ErrorCode.Local_PartitionEOF)
-                {
-                    return new ConsumeResult<TKey, TValue>
-                    {
-                        TopicPartitionOffset = new TopicPartitionOffset(topic,
-                            msg.partition, msg.offset,
-                            msgLeaderEpoch),
-                        Message = null,
-                        IsPartitionEOF = true
-                    };
-                }
-
-                long timestampUnix = 0;
-                IntPtr timestampType = (IntPtr)TimestampType.NotAvailable;
-                if (enableTimestampMarshaling)
-                {
-                    timestampUnix = Librdkafka.message_timestamp(msgPtr, out timestampType);
-                }
-                var timestamp = new Timestamp(timestampUnix, (TimestampType)timestampType);
-
-                Headers headers = null;
-                if (enableHeaderMarshaling)
-                {
-                    headers = new Headers();
-                    Librdkafka.message_headers(msgPtr, out IntPtr hdrsPtr);
-                    if (hdrsPtr != IntPtr.Zero)
-                    {
-                        for (var i=0; ; ++i)
-                        {
-                            var err = Librdkafka.header_get_all(hdrsPtr, (IntPtr)i, out IntPtr namep, out IntPtr valuep, out IntPtr sizep);
-                            if (err != ErrorCode.NoError)
-                            {
-                                break;
-                            }
-                            var headerName = Util.Marshal.PtrToStringUTF8(namep);
-                            byte[] headerValue = null;
-                            if (valuep != IntPtr.Zero)
-                            {
-                                headerValue = new byte[(int)sizep];
-                                Marshal.Copy(valuep, headerValue, 0, (int)sizep);
-                            }
-                            headers.Add(headerName, headerValue);
-                        }
-                    }
-                }
-
-                if (msg.err != ErrorCode.NoError)
-                {
-                    throw new ConsumeException(
-                        new ConsumeResult<byte[], byte[]>
-                        {
-                            TopicPartitionOffset = new TopicPartitionOffset(topic,
-                                msg.partition, msg.offset,
-                                msgLeaderEpoch),
-                            Message = new Message<byte[], byte[]>
-                            {
-                                Timestamp = timestamp,
-                                Headers = headers,
-                                Key = KeyAsByteArray(msg),
-                                Value = ValueAsByteArray(msg)
-                            },
-                            IsPartitionEOF = false
-                        },
-                        kafkaHandle.CreatePossiblyFatalMessageError(msgPtr));
-                }
-
-                TKey key;
-                try
-                {
-                    unsafe
-                    {
-                        key = keyDeserializer.Deserialize(
-                            msg.key == IntPtr.Zero
-                                ? ReadOnlySpan<byte>.Empty
-                                : new ReadOnlySpan<byte>(msg.key.ToPointer(), (int)msg.key_len),
-                            msg.key == IntPtr.Zero,
-                            new SerializationContext(MessageComponentType.Key, topic, headers));
-                    }
-                }
-                catch (Exception ex)
-                {
-                    throw new ConsumeException(
-                        new ConsumeResult<byte[], byte[]>
-                        {
-                            TopicPartitionOffset = new TopicPartitionOffset(topic,
-                                msg.partition, msg.offset,
-                                msgLeaderEpoch),
-                            Message = new Message<byte[], byte[]>
-                            {
-                                Timestamp = timestamp,
-                                Headers = headers,
-                                Key = KeyAsByteArray(msg),
-                                Value = ValueAsByteArray(msg)
-                            },
-                            IsPartitionEOF = false
-                        },
-                        new Error(ErrorCode.Local_KeyDeserialization),
-                        ex);
-                }
-
-                TValue val;
-                try
-                {
-                    unsafe
-                    {
-                        val = valueDeserializer.Deserialize(
-                            msg.val == IntPtr.Zero
-                                ? ReadOnlySpan<byte>.Empty
-                                : new ReadOnlySpan<byte>(msg.val.ToPointer(), (int)msg.len),
-                            msg.val == IntPtr.Zero,
-                            new SerializationContext(MessageComponentType.Value, topic, headers));
-                    }
-                }
-                catch (Exception ex)
-                {
-                    throw new ConsumeException(
-                        new ConsumeResult<byte[], byte[]>
-                        {
-                            TopicPartitionOffset = new TopicPartitionOffset(topic,
-                                msg.partition, msg.offset,
-                                msgLeaderEpoch),
-                            Message = new Message<byte[], byte[]>
-                            {
-                                Timestamp = timestamp,
-                                Headers = headers,
-                                Key = KeyAsByteArray(msg),
-                                Value = ValueAsByteArray(msg)
-                            },
-                            IsPartitionEOF = false
-                        },
-                        new Error(ErrorCode.Local_ValueDeserialization),
-                        ex);
-                }
-
-                return new ConsumeResult<TKey, TValue> 
-                {
-                    TopicPartitionOffset = new TopicPartitionOffset(topic,
-                        msg.partition, msg.offset,
-                        msgLeaderEpoch),
-                    Message = new Message<TKey, TValue>
-                    {
-                        Timestamp = timestamp,
-                        Headers = headers,
-                        Key = key,
-                        Value = val
-                    },
-                    IsPartitionEOF = false
-                };
+                return _result;
             }
             finally
             {
