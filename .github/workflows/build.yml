@@ -30,7 +30,7 @@ jobs:
             8.0.x
       - name: Build and test
         run: |
-          dotnet nuget add source  --username user --password ${{ github.token }} --store-password-in-clear-text --name github https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json
+          dotnet nuget add source  --username user --password ${{ github.token }} --store-password-in-clear-text --name github https://nuget.pkg.github.com/g-research/index.json
           dotnet test -c Release /p:TreatWarningsAsErrors=true test/Confluent.Kafka.UnitTests/Confluent.Kafka.UnitTests.csproj
 
   package:
