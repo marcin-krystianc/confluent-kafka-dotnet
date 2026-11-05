@@ -53,7 +53,7 @@ jobs:
             8.0.x
       - name: Build and create packages
         run: |
-          dotnet nuget add source  --username user --password ${{ github.token }} --store-password-in-clear-text --name github https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json
+          dotnet nuget add source  --username user --password ${{ github.token }} --store-password-in-clear-text --name github https://nuget.pkg.github.com/g-research/index.json
           dotnet build Confluent.Kafka.sln -c Release
 
           # Different packaging for tagged vs untagged builds
